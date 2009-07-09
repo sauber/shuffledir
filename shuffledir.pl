@@ -145,6 +145,7 @@ sub makespace {
 sub initialstate {
   print "Scanning srcdirs @srcdir\n" if $verbose;
   @newfiles = scansrcdir(@srcdir);
+  die "Error: No source files found\n" unless @newfiles;
   print "Scanning dstdir $dstdir\n" if $verbose;
   @oldfiles = scandstdir($dstdir);
   diskfree();
