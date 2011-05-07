@@ -109,6 +109,7 @@ sub copyfile {
     print "\[$r\] Copy $file->{name} $dst" if $verbose;
     if ( $copy ) { 
       copy($file->{name}, $dst);
+      sleep 2;
     } elsif ( $symlink ) {
       symlink $file->{name}, $dst;
     } elsif ( $hardlink ) {
