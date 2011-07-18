@@ -22,6 +22,7 @@ sub scansrcdir {
   our %srcfiles;
   sub srcwanted {
     return if -d;
+    return if $File::Find::name =~ /\/\./; # Skip dot files/dirs
     if ( %ext ) {
       ( my $thisext = $File::Find::name ) =~ s/.*\.//;
       unless ( $ext{$thisext} ) {
@@ -108,8 +109,9 @@ sub copyfile {
     delbeforecopy( $file->{name} );
     print "\[$r\] Copy $file->{name} $dst" if $verbose;
     if ( $copy ) { 
-      copy($file->{name}, $dst);
-      sleep 2;
+      #copy($file->{name}, $dst);
+      #sleep 2;
+      system('rsync', '-P', $file->{name}, $dst);
     } elsif ( $symlink ) {
       symlink $file->{name}, $dst;
     } elsif ( $hardlink ) {
