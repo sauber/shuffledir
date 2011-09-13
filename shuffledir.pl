@@ -121,19 +121,6 @@ sub copyfile {
   }
 }
 
-sub old_copy {
-  my($src,$dst) = @_;
-  open IN, $src;
-    open OUT, ">$dst";
-      my $x = <IN>;
-      while($x) {
-        print OUT $x;
-        $x = <IN>;
-      }
-    close OUT;
-  close IN;
-}
-
 sub makespace {
   my($file) = @_;
   my $size = $file->{size};
