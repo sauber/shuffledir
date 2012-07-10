@@ -115,7 +115,8 @@ sub copyfile {
     # Just remove file from todelete queue.
     for my $i ( 0 .. $#oldfiles ) {
       if ( $oldfiles[$i]{name} =~ /\/$f$/ ) {
-        printf "Skip %s since already in dst folder\n", $f;
+        my $s = scalar @oldfiles;
+        printf "\[$s\] Skip %s since already in dst folder\n", $f;
         splice @oldfiles, $i, 1;
         return;
       }
