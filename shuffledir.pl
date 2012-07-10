@@ -26,7 +26,7 @@ sub scansrcdir {
     if ( %ext ) {
       ( my $thisext = $File::Find::name ) =~ s/.*\.//;
       unless ( $ext{$thisext} ) {
-        print "Ignore $File::Find::name\n" if $verbose;
+        print "Ignore $File::Find::name" if $verbose;
         return;
       }
     }
@@ -39,6 +39,7 @@ sub scansrcdir {
     $srcfiles{$File::Find::name}{size} = -s;
     $srcfiles{$File::Find::name}{time} = -M;
   }
+  printf("Found %s new files\n", scalar keys %srcfiles) if $verbose;
   return shuffle(\%srcfiles);
 }
 
@@ -53,6 +54,7 @@ sub scandstdir {
     $dstfiles{$File::Find::name}{size} = -s;
     $dstfiles{$File::Find::name}{time} = -M;
   }
+  printf("Found %s old files\n", scalar keys %dstfiles) if $verbose;
   return reverse shuffle(\%dstfiles);
 }
 
@@ -72,23 +74,23 @@ sub shuffle {
 
 sub nextfile { my $list=shift; return shift @$list }
 
-sub delbeforecopy {
-  my($file) = @_;
-  $file =~ s#^.*/##;
-  my @todelete;
-  my @tosplice;
-  for my $i ( 0 .. $#oldfiles ) {
-    #print "Compare $oldfiles[$i]{name} $file";
-    if ( substr($oldfiles[$i]{name},-length $file) eq $file ) {
-      push @todelete, $oldfiles[$i]{name};
-      push @tosplice, $i;
-    }
-  }
-  splice @oldfiles, $_, 1 for @tosplice;
-  for $file ( @todelete ) {
-    delfile($file);
-  }
-}
+#sub delbeforecopy {
+#  my($file) = @_;
+#  $file =~ s#^.*/##;
+#  my @todelete;
+#  my @tosplice;
+#  for my $i ( 0 .. $#oldfiles ) {
+#    #print "Compare $oldfiles[$i]{name} $file";
+#    if ( substr($oldfiles[$i]{name},-length $file) eq $file ) {
+#      push @todelete, $oldfiles[$i]{name};
+#      push @tosplice, $i;
+#    }
+#  }
+#  splice @oldfiles, $_, 1 for @tosplice;
+#  for $file ( @todelete ) {
+#    delfile($file);
+#  }
+#}
 
 sub delfile {
   my($file) = @_;
@@ -105,8 +107,20 @@ sub copyfile {
   if ( $file->{size} + $margin < $df ) {
     my $r = scalar @newfiles;
     my($v,$d,$f) = File::Spec->splitpath( $file->{name} );
-    my $dst = sprintf "%s/%03s_%s", $dstdir, ++$writecounter, $f;
-    delbeforecopy( $file->{name} );
+    #my $dst = sprintf "%s/%03s_%s", $dstdir, ++$writecounter, $f;
+    my $dst = sprintf "%s/%s", $dstdir, $f;
+    #delbeforecopy( $file->{name} );
+
+    # If file is already there, then don't need to copy.
+    # Just remove file from todelete queue.
+    for my $i ( 0 .. $#oldfiles ) {
+      if ( $oldfiles[$i]{name} =~ /\/$f$/ ) {
+        printf "Skip %s since already in dst folder\n", $f;
+        splice @oldfiles, $i, 1;
+        return;
+      }
+    }
+ 
     print "\[$r\] Copy $file->{name} $dst" if $verbose;
     if ( $copy ) { 
       #copy($file->{name}, $dst);
