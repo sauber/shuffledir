@@ -14,7 +14,7 @@ use Getopt::Long;
 # Global variables
 #
 our(@srcdir,$dstdir,$df,@oldfiles,@newfiles);
-our($verbose,$margin,$copy,$symlink,$hardlink,$ext,%ext);
+our($verbose,$margin,$copy,$symlink,$hardlink,$fillup,$ext,%ext);
 my $writecounter;
 
 sub scansrcdir {
@@ -94,6 +94,8 @@ sub nextfile { my $list=shift; return shift @$list }
 
 sub delfile {
   my($file) = @_;
+
+  return if $fillup;
   my $r = scalar @oldfiles;
   print "\[$r\] Delete $file" if $verbose;
   my $cnt = unlink "$file";
@@ -162,6 +164,7 @@ GetOptions(
   "copy"     => \$copy,
   "symlink"  => \$symlink,
   "hardlink" => \$hardlink,
+  "fillup"   => \$fillup,
   "ext=s"      => \$ext,
 );
 
@@ -172,7 +175,7 @@ $ext{$_}++ for split /,/, $ext;
 initialstate();
 # Copy new files
 while ( my $file = nextfile(\@newfiles) ) {
-  makespace($file);
+  makespace($file) unless $fillup;
   copyfile($file);
 }
 # Delete all old ones
