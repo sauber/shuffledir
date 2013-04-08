@@ -133,7 +133,7 @@ sub copyfile {
     for my $i ( 0 .. $#oldfiles ) {
       if ( $oldfiles[$i]{name} =~ /\/$f$/ ) {
         my $s = scalar @oldfiles;
-        printf "\[$s\] Skip %s since already in dst folder\n", $f;
+        printf "\[$s\] Skip %s since already in dst folder\n", $f if $verbose;
         splice @oldfiles, $i, 1;
         return;
       }
