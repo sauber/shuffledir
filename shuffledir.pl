@@ -14,8 +14,19 @@ use Getopt::Long;
 # Global variables
 #
 our(@srcdir,$dstdir,$df,@oldfiles,@newfiles);
-our($verbose,$margin,$copy,$symlink,$hardlink,$fillup,$ext,%ext);
+our($verbose,$dirsize,$margin,$copy,$symlink,$hardlink,$fillup,$ext,%ext);
 my $writecounter;
+
+# Convert a number with unit to integer
+# Example: 8k -> 8192
+sub eatunits {
+  my $num = shift;
+
+  return 1024**1 * substr $num, 0, -1 if substr($num, -1, 1) =~ /k/i;
+  return 1024**2 * substr $num, 0, -1 if substr($num, -1, 1) =~ /m/i;
+  return 1024**3 * substr $num, 0, -1 if substr($num, -1, 1) =~ /g/i;
+  return $num;
+}
 
 sub scansrcdir {
   find(\&srcwanted, @_);
@@ -59,7 +70,11 @@ sub scandstdir {
 }
 
 sub diskfree {
-  $df = 1024 * `df -k "$dstdir" | tail -1 | awk '{ print \$4 }'`;
+  if ( $dirsize) {
+    $df = $dirsize - 1024 * `du -sk "$dstdir" | awk '{ print \$1}'`;
+  } else {
+    $df = 1024 * `df -k "$dstdir" | tail -1 | awk '{ print \$4 }'`;
+  }
 }
 
 # Do a weighted shuffle of files depending on age of file
@@ -124,6 +139,8 @@ sub copyfile {
       }
     }
  
+    #makespace($file) unless $fillup;
+    #return unless $file->{size} + $margin < $df;
     print "\[$r\] Copy $file->{name} $dst" if $verbose;
     if ( $copy ) { 
       #copy($file->{name}, $dst);
@@ -159,18 +176,21 @@ sub initialstate {
 }
 
 GetOptions(
-  "margin=s" => \$margin,
-  "verbose"  => \$verbose,
-  "copy"     => \$copy,
-  "symlink"  => \$symlink,
-  "hardlink" => \$hardlink,
-  "fillup"   => \$fillup,
-  "ext=s"      => \$ext,
+  "margin=s"  => \$margin,
+  "dirsize=s" => \$dirsize,
+  "verbose"   => \$verbose,
+  "copy"      => \$copy,
+  "symlink"   => \$symlink,
+  "hardlink"  => \$hardlink,
+  "fillup"    => \$fillup,
+  "ext=s"     => \$ext,
 );
 
 @srcdir = @ARGV;
 $dstdir = pop @srcdir;
-$margin ||= 1024**2;
+$margin ||= '0m';
+$margin = eatunits($margin) if $margin;
+$dirsize = eatunits($dirsize) if $dirsize;
 $ext{$_}++ for split /,/, $ext;
 initialstate();
 # Copy new files
