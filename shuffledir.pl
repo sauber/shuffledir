@@ -1,6 +1,6 @@
 #!/usr/bin/perl -l
 
-# shuffledir.pl, Soren 2006-08
+# shuffledir.pl, Soren 2006-14
 # Copy files from src dirs into dst dir.
 # Shuffle the order, weighted by age, most recent first.
 
@@ -13,12 +13,19 @@ use Getopt::Long;
 
 # Global variables
 #
-our(@srcdir,$dstdir,$df,@oldfiles,@newfiles);
-our($verbose,$dirsize,$margin,$copy,$symlink,$hardlink,$fillup,$ext,%ext);
-my $writecounter;
+our(@srcdir ,$dstdir ,$df ,@oldfiles ,@newfiles, $writecounter);
+
+# Command line paramenters
+#
+our(
+  $verbose,
+  $dirsize, $filesize, $margin, $ext, %ext,
+  $copy, $symlink, $hardlink, $fillup,
+);
 
 # Convert a number with unit to integer
 # Example: 8k -> 8192
+#
 sub eatunits {
   my $num = shift;
 
@@ -28,24 +35,36 @@ sub eatunits {
   return $num;
 }
 
+# Find all files in source dir
+#
 sub scansrcdir {
   find(\&srcwanted, @_);
   our %srcfiles;
   sub srcwanted {
     return if -d;
     return if $File::Find::name =~ /\/\./; # Skip dot files/dirs
+
+    # Only keep if extension matches
     if ( %ext ) {
       ( my $thisext = $File::Find::name ) =~ s/.*\.//;
       unless ( $ext{$thisext} ) {
-        print "Ignore $File::Find::name" if $verbose;
+        print "Ignore $File::Find::name (extention)" if $verbose;
         return;
       }
     }
-    #my $filelist = shift;
-    #print "Read $_\n"; # XXX: debug
-    #return unless /\.(ogg|mp3)$/i;
-    #print "Keep $_\n"; # XXX: debug
-    #return if $File::Find::name =~ /pimsleur/i;
+
+    # Only keep files smaller than max file size
+    my $size = -s;
+    #print "Size of $File::Find::name is $size vs $filesize";
+    #die;
+    if ( $filesize and $size > $filesize ) {
+      #print "Max $size > $filesize\n";
+      print "Ignore $File::Find::name (filesize)" if $verbose;
+      #die;
+      return;
+    }
+
+    # Keep file
     $srcfiles{$File::Find::name}{name} = $File::Find::name;
     $srcfiles{$File::Find::name}{size} = -s;
     $srcfiles{$File::Find::name}{time} = -M;
@@ -54,6 +73,8 @@ sub scansrcdir {
   return shuffle(\%srcfiles);
 }
 
+# Find all files in target dir
+#
 sub scandstdir {
   find(\&dstwanted, @_);
   our %dstfiles;
@@ -88,24 +109,6 @@ sub shuffle {
 }
 
 sub nextfile { my $list=shift; return shift @$list }
-
-#sub delbeforecopy {
-#  my($file) = @_;
-#  $file =~ s#^.*/##;
-#  my @todelete;
-#  my @tosplice;
-#  for my $i ( 0 .. $#oldfiles ) {
-#    #print "Compare $oldfiles[$i]{name} $file";
-#    if ( substr($oldfiles[$i]{name},-length $file) eq $file ) {
-#      push @todelete, $oldfiles[$i]{name};
-#      push @tosplice, $i;
-#    }
-#  }
-#  splice @oldfiles, $_, 1 for @tosplice;
-#  for $file ( @todelete ) {
-#    delfile($file);
-#  }
-#}
 
 sub delfile {
   my($file) = @_;
@@ -176,22 +179,30 @@ sub initialstate {
 }
 
 GetOptions(
-  "margin=s"  => \$margin,
-  "dirsize=s" => \$dirsize,
-  "verbose"   => \$verbose,
-  "copy"      => \$copy,
-  "symlink"   => \$symlink,
-  "hardlink"  => \$hardlink,
-  "fillup"    => \$fillup,
-  "ext=s"     => \$ext,
+  "margin=s"   => \$margin,    # Amount of free disk space
+  "dirsize=s"  => \$dirsize,   # Max space used in target dir
+  "filesize=s" => \$filesize,  # Max size of file
+  "verbose"    => \$verbose,   # Write what is going on
+  "copy"       => \$copy,      # Copy source files
+  "symlink"    => \$symlink,   # Softlink to source files
+  "hardlink"   => \$hardlink,  # Hardlink to source files
+  "fillup"     => \$fillup,    # Keep existing files
+  "ext=s"      => \$ext,       # Only kopy files with certain extensions
 );
 
+# Can specify many source dirs. Last dir specified is target dir.
 @srcdir = @ARGV;
 $dstdir = pop @srcdir;
+
+# Convert units
 $margin ||= '0m';
-$margin = eatunits($margin) if $margin;
-$dirsize = eatunits($dirsize) if $dirsize;
-$ext{$_}++ for split /,/, $ext;
+$margin   = eatunits($margin)   if $margin;
+$dirsize  = eatunits($dirsize)  if $dirsize;
+$filesize = eatunits($filesize) if $filesize;
+
+# Extensions are comma seperated. Convert to hash keys
+do { $ext{$_}++ for split /,/, $ext } if $ext;
+
 initialstate();
 # Copy new files
 while ( my $file = nextfile(\@newfiles) ) {
